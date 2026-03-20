@@ -215,25 +215,63 @@ class ReservationValidator {
         }
     }
 }
+class ConcurrentBookingProcessor implements Runnable {
+
+    private RoomAllocationService allocationService;
+    private RoomInventory inventory;
+    private Reservation reservation;
+
+    public ConcurrentBookingProcessor(RoomAllocationService allocationService,
+                                      RoomInventory inventory,
+                                      Reservation reservation) {
+        this.allocationService = allocationService;
+        this.inventory = inventory;
+        this.reservation = reservation;
+    }
+
+    @Override
+    public void run() {
+        // Critical Section: Synchronize on the inventory object
+        // to prevent multiple threads from over-booking.
+        synchronized (inventory) {
+            System.out.println("Thread " + Thread.currentThread().getName() +
+                    " attempting booking for: " + reservation.getGuestName());
+
+            allocationService.allocateRoom(reservation, inventory);
+        }
+    }
+}
 
 public class BookMyStayApp {
     public static void main(String[] args) {
-        System.out.println("Booking Cancellation");
+        System.out.println("Concurrent Booking Simulation\n");
 
-        RoomInventory inventory = new RoomInventory();
-        inventory.addRooms("Single", 5); // Start with 5
+        RoomInventory sharedInventory = new RoomInventory();
+        sharedInventory.addRooms("Suite", 2); // Only 2 suites available
 
-        CancellationService cancellationService = new CancellationService();
+        RoomAllocationService allocationService = new RoomAllocationService();
 
-        String resId = "Single-1";
-        inventory.decrementInventory("Single"); // Inventory becomes 4
-        cancellationService.registerBooking(resId, "Single");
+        Reservation res1 = new Reservation("Guest-A", "Suite");
+        Reservation res2 = new Reservation("Guest-B", "Suite");
+        Reservation res3 = new Reservation("Guest-C", "Suite");
 
-        cancellationService.cancelBooking(resId, inventory);
+        Thread thread1 = new Thread(new ConcurrentBookingProcessor(allocationService, sharedInventory, res1), "Thread-1");
+        Thread thread2 = new Thread(new ConcurrentBookingProcessor(allocationService, sharedInventory, res2), "Thread-2");
+        Thread thread3 = new Thread(new ConcurrentBookingProcessor(allocationService, sharedInventory, res3), "Thread-3");
 
-        cancellationService.showRollbackHistory();
+        thread1.start();
+        thread2.start();
+        thread3.start();
 
-        System.out.println("\nUpdated Single Room Availability: " + inventory.getAvailableCount("Single"));
+        try {
+            thread1.join();
+            thread2.join();
+            thread3.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        System.out.println("\nFinal Suite Availability: " + sharedInventory.getAvailableCount("Suite"));
     }
     }
 
