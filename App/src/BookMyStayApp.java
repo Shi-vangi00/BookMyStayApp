@@ -2,6 +2,8 @@ import java.util.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
+import java.io.*;
+import java.util.List;
 
 class CancellationService {
 
@@ -242,36 +244,63 @@ class ConcurrentBookingProcessor implements Runnable {
     }
 }
 
-public class BookMyStayApp {
-    public static void main(String[] args) {
-        System.out.println("Concurrent Booking Simulation\n");
+class PersistenceService {
 
-        RoomInventory sharedInventory = new RoomInventory();
-        sharedInventory.addRooms("Suite", 2); // Only 2 suites available
+    private static final String FILE_NAME = "booking_data.ser";
 
-        RoomAllocationService allocationService = new RoomAllocationService();
+    public void saveState(List<Reservation> history) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(FILE_NAME))) {
+            oos.writeObject(history);
+            System.out.println("System state persisted successfully to " + FILE_NAME);
+        } catch (IOException e) {
+            System.out.println("Error saving state: " + e.getMessage());
+        }
+    }
 
-        Reservation res1 = new Reservation("Guest-A", "Suite");
-        Reservation res2 = new Reservation("Guest-B", "Suite");
-        Reservation res3 = new Reservation("Guest-C", "Suite");
-
-        Thread thread1 = new Thread(new ConcurrentBookingProcessor(allocationService, sharedInventory, res1), "Thread-1");
-        Thread thread2 = new Thread(new ConcurrentBookingProcessor(allocationService, sharedInventory, res2), "Thread-2");
-        Thread thread3 = new Thread(new ConcurrentBookingProcessor(allocationService, sharedInventory, res3), "Thread-3");
-
-        thread1.start();
-        thread2.start();
-        thread3.start();
-
-        try {
-            thread1.join();
-            thread2.join();
-            thread3.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+    @SuppressWarnings("unchecked")
+    public List<Reservation> loadState() {
+        File file = new File(FILE_NAME);
+        if (!file.exists()) {
+            System.out.println("No persistence file found. Starting with fresh state.");
+            return null;
         }
 
-        System.out.println("\nFinal Suite Availability: " + sharedInventory.getAvailableCount("Suite"));
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(FILE_NAME))) {
+            return (List<Reservation>) ois.readObject();
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Error loading state: " + e.getMessage());
+            return null;
+        }
+    }
+}
+
+public class BookMyStayApp {
+    public static void main(String[] args) {
+        System.out.println("Data Persistence & System Recovery");
+
+        PersistenceService persistenceService = new PersistenceService();
+        BookingHistory history = new BookingHistory();
+
+        System.out.println("\nStep 1: Creating initial bookings...");
+        history.addReservation(new Reservation("Abhi", "Single"));
+        history.addReservation(new Reservation("Subha", "Double"));
+
+        persistenceService.saveState(history.getConfirmedReservations());
+
+        history = new BookingHistory();
+        System.out.println("\nStep 2: Restarting system and recovering data...");
+
+        List<Reservation> recoveredData = persistenceService.loadState();
+        if (recoveredData != null) {
+            for (Reservation res : recoveredData) {
+                history.addReservation(res);
+            }
+        }
+
+        System.out.println("\nRecovery complete. Restored Bookings:");
+        for (Reservation res : history.getConfirmedReservations()) {
+            System.out.println("- Guest: " + res.getGuestName() + ", Room: " + res.getRoomType());
+        }
     }
     }
 
