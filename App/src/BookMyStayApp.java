@@ -1,4 +1,51 @@
 import java.util.*;
+class AddOnService {
+
+    private String serviceName;
+    private double cost;
+
+    public AddOnService(String serviceName, double cost) {
+        this.serviceName = serviceName;
+        this.cost = cost;
+    }
+
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public double getCost() {
+        return cost;
+    }
+}
+
+class AddOnServiceManager {
+
+    private Map<String, List<AddOnService>> servicesByReservation;
+
+    public AddOnServiceManager() {
+        servicesByReservation = new HashMap<>();
+    }
+
+    public void addService(String reservationId, AddOnService service) {
+        // If the ID isn't in the map, create a new list; then add the service
+        servicesByReservation
+                .computeIfAbsent(reservationId, k -> new ArrayList<>())
+                .add(service);
+    }
+
+    public double calculateTotalServiceCost(String reservationId) {
+        List<AddOnService> services = servicesByReservation.get(reservationId);
+        if (services == null) {
+            return 0.0;
+        }
+
+        double total = 0;
+        for (AddOnService s : services) {
+            total += s.getCost();
+        }
+        return total;
+    }
+}
 
 class RoomAllocationService {
 
@@ -68,23 +115,28 @@ class RoomInventory {
 
 public class BookMyStayApp {
     public static void main(String[] args) {
-        RoomInventory inventory = new RoomInventory();
-        inventory.addRooms("Single", 10);
-        inventory.addRooms("Suite", 5);
+        // Initialize the manager
+        AddOnServiceManager manager = new AddOnServiceManager();
 
-        RoomAllocationService allocationService = new RoomAllocationService();
+        // Define a Reservation ID (from Use Case 6)
+        String resId = "Single-1";
 
-        Queue<Reservation> requestQueue = new LinkedList<>();
-        requestQueue.add(new Reservation("Abhi", "Single"));
-        requestQueue.add(new Reservation("Subha", "Single"));
-        requestQueue.add(new Reservation("Vanmathi", "Suite"));
+        // Define available services
+        AddOnService breakfast = new AddOnService("Breakfast", 500.0);
+        AddOnService wifi = new AddOnService("High-Speed WiFi", 300.0);
+        AddOnService gym = new AddOnService("Gym Access", 700.0);
 
-        System.out.println("Room Allocation Processing");
+        // Guest selects services
+        manager.addService(resId, breakfast);
+        manager.addService(resId, wifi);
+        manager.addService(resId, gym);
 
-        while (!requestQueue.isEmpty()) {
-            Reservation request = requestQueue.poll();
-            allocationService.allocateRoom(request, inventory);
-        }
+        // Output results as shown in the screenshot
+        System.out.println("Add-On Service Selection");
+        System.out.println("Reservation ID: " + resId);
+
+        double totalCost = manager.calculateTotalServiceCost(resId);
+        System.out.println("Total Add-On Cost: " + totalCost);
     }
     }
 
