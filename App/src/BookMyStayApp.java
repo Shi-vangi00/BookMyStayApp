@@ -1,4 +1,23 @@
 import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+
+class BookingHistory {
+
+    private List<Reservation> confirmedReservations;
+
+    public BookingHistory() {
+        confirmedReservations = new ArrayList<>();
+    }
+
+    public void addReservation(Reservation reservation) {
+        confirmedReservations.add(reservation);
+    }
+
+    public List<Reservation> getConfirmedReservations() {
+        return confirmedReservations;
+    }
+}
 class AddOnService {
 
     private String serviceName;
@@ -112,31 +131,35 @@ class RoomInventory {
         counts.put(type, counts.get(type) - 1);
     }
 }
+class BookingReportService {
+
+    public void generateReport(BookingHistory history) {
+        System.out.println("Booking History Report");
+
+        for (Reservation res : history.getConfirmedReservations()) {
+            System.out.println("Guest: " + res.getGuestName() +
+                    ", Room Type: " + res.getRoomType());
+        }
+    }
+}
 
 public class BookMyStayApp {
     public static void main(String[] args) {
-        // Initialize the manager
-        AddOnServiceManager manager = new AddOnServiceManager();
+        // 1. Initialize our components
+        BookingHistory history = new BookingHistory();
+        BookingReportService reportService = new BookingReportService();
 
-        // Define a Reservation ID (from Use Case 6)
-        String resId = "Single-1";
+        // 2. Simulate confirming and storing bookings (Audit Trail)
+        // In a real flow, these would come from your RoomAllocationService
+        history.addReservation(new Reservation("Abhi", "Single"));
+        history.addReservation(new Reservation("Subha", "Double"));
+        history.addReservation(new Reservation("Vanmathi", "Suite"));
 
-        // Define available services
-        AddOnService breakfast = new AddOnService("Breakfast", 500.0);
-        AddOnService wifi = new AddOnService("High-Speed WiFi", 300.0);
-        AddOnService gym = new AddOnService("Gym Access", 700.0);
+        // 3. Print the output as shown in the requirement
+        System.out.println("Booking History and Reporting\n");
 
-        // Guest selects services
-        manager.addService(resId, breakfast);
-        manager.addService(resId, wifi);
-        manager.addService(resId, gym);
-
-        // Output results as shown in the screenshot
-        System.out.println("Add-On Service Selection");
-        System.out.println("Reservation ID: " + resId);
-
-        double totalCost = manager.calculateTotalServiceCost(resId);
-        System.out.println("Total Add-On Cost: " + totalCost);
+        // 4. Generate the report
+        reportService.generateReport(history);
     }
     }
 
